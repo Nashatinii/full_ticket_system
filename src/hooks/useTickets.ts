@@ -21,6 +21,19 @@ export interface Comment {
   timestamp: string;
 }
 
+// Helper function to create dates relative to now
+const createRelativeDate = (hoursAgo: number) => {
+  const date = new Date();
+  date.setHours(date.getHours() - hoursAgo);
+  return date.toISOString();
+};
+
+const createRelativeDateDays = (daysAgo: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return date.toISOString();
+};
+
 const initialTickets: Ticket[] = [
   {
     id: "TK-001",
@@ -30,15 +43,15 @@ const initialTickets: Ticket[] = [
     status: "Open",
     category: "Bug",
     assignee: "Sarah Johnson",
-    created: "2 hours ago",
-    updated: "1 hour ago",
+    created: createRelativeDate(2),
+    updated: createRelativeDate(1),
     tags: ["authentication", "frontend", "critical"],
     comments: [
       {
         id: "1",
         author: "Sarah Johnson",
         content: "I'm investigating this issue. It seems to be related to the server configuration.",
-        timestamp: "1 hour ago"
+        timestamp: createRelativeDate(1)
       }
     ]
   },
@@ -50,15 +63,15 @@ const initialTickets: Ticket[] = [
     status: "In Progress",
     category: "Performance",
     assignee: "Mike Chen",
-    created: "5 hours ago",
-    updated: "3 hours ago",
+    created: createRelativeDate(5),
+    updated: createRelativeDate(3),
     tags: ["performance", "database"],
     comments: [
       {
         id: "2",
         author: "Mike Chen",
         content: "Working on optimizing the database queries. Should have a fix by tomorrow.",
-        timestamp: "3 hours ago"
+        timestamp: createRelativeDate(3)
       }
     ]
   },
@@ -70,8 +83,8 @@ const initialTickets: Ticket[] = [
     status: "Open",
     category: "Feature",
     assignee: "Alex Smith",
-    created: "1 day ago",
-    updated: "1 day ago",
+    created: createRelativeDateDays(1),
+    updated: createRelativeDateDays(1),
     tags: ["export", "csv"],
   },
   {
@@ -82,15 +95,15 @@ const initialTickets: Ticket[] = [
     status: "Resolved",
     category: "Bug",
     assignee: "Emma Wilson",
-    created: "2 days ago",
-    updated: "6 hours ago",
+    created: createRelativeDateDays(2),
+    updated: createRelativeDate(6),
     tags: ["mobile", "ios", "crash"],
     comments: [
       {
         id: "3",
         author: "Emma Wilson",
         content: "Fixed the iOS notification crash. Deployed to production.",
-        timestamp: "6 hours ago"
+        timestamp: createRelativeDate(6)
       }
     ]
   },
@@ -102,8 +115,8 @@ const initialTickets: Ticket[] = [
     status: "In Progress",
     category: "Feature",
     assignee: "David Brown",
-    created: "3 days ago",
-    updated: "1 day ago",
+    created: createRelativeDateDays(3),
+    updated: createRelativeDateDays(1),
     tags: ["ui", "dark-mode"],
   },
   {
@@ -114,8 +127,8 @@ const initialTickets: Ticket[] = [
     status: "Open",
     category: "Performance",
     assignee: "Lisa Garcia",
-    created: "4 days ago",
-    updated: "2 days ago",
+    created: createRelativeDateDays(4),
+    updated: createRelativeDateDays(2),
     tags: ["database", "optimization"],
   },
 ];
@@ -132,12 +145,13 @@ export function useTickets() {
     const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
     const newId = `TK-${String(maxId + 1).padStart(3, '0')}`;
 
+    const now = new Date();
     const newTicket: Ticket = {
       ...ticketData,
       id: newId,
       status: 'Open',
-      created: 'Just now',
-      updated: 'Just now',
+      created: now.toISOString(),
+      updated: now.toISOString(),
       comments: [],
     };
 
@@ -149,7 +163,7 @@ export function useTickets() {
     setTickets(prev => 
       prev.map(ticket => 
         ticket.id === id 
-          ? { ...ticket, ...updates, updated: 'Just now' }
+          ? { ...ticket, ...updates, updated: new Date().toISOString() }
           : ticket
       )
     );
@@ -160,10 +174,11 @@ export function useTickets() {
   };
 
   const addComment = (ticketId: string, comment: Omit<Comment, 'id' | 'timestamp'>) => {
+    const now = new Date();
     const newComment: Comment = {
       ...comment,
       id: Date.now().toString(),
-      timestamp: 'Just now',
+      timestamp: now.toISOString(),
     };
 
     setTickets(prev => 
@@ -172,7 +187,7 @@ export function useTickets() {
           ? { 
               ...ticket, 
               comments: [...(ticket.comments || []), newComment],
-              updated: 'Just now'
+              updated: now.toISOString()
             }
           : ticket
       )

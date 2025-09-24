@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Tickets from "./pages/Tickets";
 import TicketDetail from "./pages/TicketDetail";
 import CreateTicket from "./pages/CreateTicket";
+import EditTicket from "./pages/EditTicket";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tickets" element={<Tickets />} />
             <Route path="/tickets/:id" element={<TicketDetail />} />
+            <Route path="/tickets/:id/edit" element={<EditTicket />} />
             <Route path="/tickets/create" element={<CreateTicket />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/profile" element={<Profile />} />

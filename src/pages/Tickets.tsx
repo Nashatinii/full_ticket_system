@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Plus, Clock, CheckCircle, AlertCircle, User, Ticket, Trash, ArrowUpDown, X } from "lucide-react";
+import { Search, Filter, Plus, Clock, CheckCircle, AlertCircle, User, Ticket, Trash, ArrowUpDown, X, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { useTickets } from "@/hooks/useTickets";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useToast } from "@/hooks/use-toast";
+import { useLiveTime } from "@/hooks/useLiveTime";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +24,42 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+// Component for displaying ticket time with tooltip
+const TicketTimeDisplay = ({ timestamp }: { timestamp: string }) => {
+  const timeDisplay = useLiveTime(timestamp, 60000); // Update every minute
+  
+  return (
+    <span title={`Created: ${timeDisplay.full}`}>
+      {timeDisplay.relative}
+    </span>
+  );
+};
+
 const Tickets = () => {
   const [searchTerm, setSearchTerm] = useLocalStorage<string>("ticketApp_search", "");
   const [activeTab, setActiveTab] = useLocalStorage<string>("ticketApp_activeTab", "all");
   const [sortBy, setSortBy] = useLocalStorage<string>("ticketApp_sortBy", "newest");
-  const { tickets, deleteTicket } = useTickets();
+  const { tickets, deleteTicket, syncWithLocalStorage } = useTickets();
   const { toast } = useToast();
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-refresh every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncWithLocalStorage();
+      setLastUpdated(new Date());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [syncWithLocalStorage]);
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    syncWithLocalStorage();
+    setLastUpdated(new Date());
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
   // Function to parse time strings and convert to sortable values
   const parseTimeToMinutes = (timeStr: string): number => {
@@ -161,14 +192,29 @@ const Tickets = () => {
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               All Tickets
             </h1>
-            <p className="text-muted-foreground">Manage and track all support tickets</p>
+            <p className="text-muted-foreground">
+              Manage and track all support tickets
+              <span className="text-xs ml-2">Last updated: {lastUpdated.toLocaleTimeString()}</span>
+            </p>
           </div>
-          <Link to="/tickets/create">
-            <Button className="gradient-button hover:scale-105 transition-transform duration-200 animate-pulse-glow">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Ticket
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="hover:scale-105 transition-transform duration-200"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </Button>
-          </Link>
+            <Link to="/tickets/create">
+              <Button className="gradient-button hover:scale-105 transition-transform duration-200 animate-pulse-glow">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Ticket
+              </Button>
+            </Link>
+          </div>
         </motion.div>
 
         {/* Search and Filter */}
@@ -342,8 +388,8 @@ const Tickets = () => {
                                 </Badge>
                               </div>
                               <div className="text-right">
-                                <div>Created {ticket.created}</div>
-                                <div>Updated {ticket.updated}</div>
+                                <div>Created <TicketTimeDisplay timestamp={ticket.created} /></div>
+                                <div>Updated <TicketTimeDisplay timestamp={ticket.updated} /></div>
                               </div>
                             </div>
                           </CardContent>

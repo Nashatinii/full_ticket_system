@@ -22,6 +22,7 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { useTickets } from "@/hooks/useTickets";
 import { useAuth } from "@/hooks/useAuth";
+import { useLiveTime } from "@/hooks/useLiveTime";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+// Component for displaying ticket time with tooltip
+const TicketTimeDisplay = ({ timestamp }: { timestamp: string }) => {
+  const timeDisplay = useLiveTime(timestamp, 60000); // Update every minute
+  
+  return (
+    <span title={`Time: ${timeDisplay.full}`}>
+      {timeDisplay.relative}
+    </span>
+  );
+};
 
 const TicketDetail = () => {
   const { id } = useParams();
@@ -180,7 +192,11 @@ const TicketDetail = () => {
                        ))}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => navigate(`/tickets/${ticket.id}/edit`)}
+                      >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </Button>
@@ -252,7 +268,9 @@ const TicketDetail = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium text-sm">{comment.author}</span>
-                            <span className="text-xs text-muted-foreground">{comment.timestamp}</span>
+                            <span className="text-xs text-muted-foreground">
+                              <TicketTimeDisplay timestamp={comment.timestamp} />
+                            </span>
                           </div>
                           <div className="p-3 rounded-lg bg-muted/50">
                             <p className="text-sm">{comment.content}</p>
@@ -318,14 +336,14 @@ const TicketDetail = () => {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Created</p>
-                      <p className="font-medium">{ticket.created}</p>
+                      <p className="font-medium"><TicketTimeDisplay timestamp={ticket.created} /></p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Last updated</p>
-                      <p className="font-medium">{ticket.updated}</p>
+                      <p className="font-medium"><TicketTimeDisplay timestamp={ticket.updated} /></p>
                     </div>
                   </div>
                 </CardContent>
@@ -359,7 +377,10 @@ const TicketDetail = () => {
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Mark Resolved
                   </Button>
-                  <Button className="w-full justify-start gradient-button">
+                  <Button 
+                    className="w-full justify-start gradient-button"
+                    onClick={() => navigate(`/tickets/${ticket.id}/edit`)}
+                  >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Ticket
                   </Button>

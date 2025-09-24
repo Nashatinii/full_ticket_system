@@ -1,15 +1,48 @@
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Ticket, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Ticket, Clock, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { useTickets } from "@/hooks/useTickets";
+import { useEffect, useState } from "react";
+import { useLiveTime } from "@/hooks/useLiveTime";
+
+// Component for displaying ticket time with tooltip
+const TicketTimeDisplay = ({ timestamp }: { timestamp: string }) => {
+  const timeDisplay = useLiveTime(timestamp, 60000); // Update every minute
+  
+  return (
+    <span title={`Created: ${timeDisplay.full}`}>
+      {timeDisplay.relative}
+    </span>
+  );
+};
 
 const Dashboard = () => {
-  const { getStats, getRecentTickets } = useTickets();
+  const { getStats, getRecentTickets, syncWithLocalStorage } = useTickets();
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const stats = getStats();
   const recentTickets = getRecentTickets();
+
+  // Auto-refresh every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncWithLocalStorage();
+      setLastUpdated(new Date());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [syncWithLocalStorage]);
+
+  const handleManualRefresh = () => {
+    setIsRefreshing(true);
+    syncWithLocalStorage();
+    setLastUpdated(new Date());
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
   const statsConfig = [
     {
@@ -27,6 +60,14 @@ const Dashboard = () => {
       icon: Clock,
       color: "text-warning",
       bgColor: "bg-warning/10",
+    },
+    {
+      title: "In Progress",
+      value: stats.inProgress.toString(),
+      description: "Being worked on",
+      icon: AlertCircle,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
     },
     {
       title: "Resolved",
@@ -60,18 +101,33 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Dashboard
             </h1>
-            <p className="text-muted-foreground">Welcome back! Here's what's happening with your tickets.</p>
+            <p className="text-muted-foreground">
+              Welcome back! Here's what's happening with your tickets.
+              <span className="text-xs ml-2">Last updated: {lastUpdated.toLocaleTimeString()}</span>
+            </p>
           </div>
-          <Link to="/tickets/create">
-            <Button className="gradient-button hover:scale-105 transition-transform duration-200 animate-pulse-glow">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Ticket
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="hover:scale-105 transition-transform duration-200"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </Button>
-          </Link>
+            <Link to="/tickets/create">
+              <Button className="gradient-button hover:scale-105 transition-transform duration-200 animate-pulse-glow">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Ticket
+              </Button>
+            </Link>
+          </div>
         </motion.div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           {statsConfig.map((stat, index) => (
             <motion.div
               key={stat.title}
@@ -151,7 +207,7 @@ const Dashboard = () => {
                       </div>
                       <h4 className="font-medium mb-1">{ticket.title}</h4>
                       <p className="text-sm text-muted-foreground">
-                        Assigned to {ticket.assignee} • {ticket.created}
+                        Assigned to {ticket.assignee} • <TicketTimeDisplay timestamp={ticket.created} />
                       </p>
                     </div>
                   </motion.div>

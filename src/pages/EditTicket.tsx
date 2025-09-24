@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,30 +10,69 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, AlertCircle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { useTickets } from "@/hooks/useTickets";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useTickets, Ticket } from "@/hooks/useTickets";
 import { formatTimestamp } from "@/lib/timeUtils";
 
-const CreateTicket = () => {
+const EditTicket = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { createTicket } = useTickets();
+  const { getTicketById, updateTicket } = useTickets();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [formData, setFormData] = useLocalStorage("ticketApp_createDraft", {
+  const ticket = getTicketById(id || "");
+  
+  const [formData, setFormData] = useState({
     title: "",
     description: "",
     priority: "",
+    status: "",
     category: "",
     assignee: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    if (ticket) {
+      setFormData({
+        title: ticket.title,
+        description: ticket.description,
+        priority: ticket.priority.toLowerCase(),
+        status: ticket.status.toLowerCase().replace(" ", ""),
+        category: ticket.category.toLowerCase(),
+        assignee: ticket.assignee.toLowerCase().replace(" ", ""),
+      });
+    }
+  }, [ticket]);
+
+  if (!ticket) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Ticket not found</h1>
+            <Button onClick={() => navigate("/tickets")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Tickets
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   const priorities = [
     { value: "low", label: "Low", color: "text-success" },
     { value: "medium", label: "Medium", color: "text-warning" },
     { value: "high", label: "High", color: "text-destructive" },
+  ];
+
+  const statuses = [
+    { value: "open", label: "Open" },
+    { value: "inprogress", label: "In Progress" },
+    { value: "resolved", label: "Resolved" },
   ];
 
   const categories = [
@@ -42,6 +81,7 @@ const CreateTicket = () => {
     { value: "improvement", label: "Improvement" },
     { value: "task", label: "Task" },
     { value: "question", label: "Question" },
+    { value: "performance", label: "Performance" },
   ];
 
   const assignees = [
@@ -50,6 +90,7 @@ const CreateTicket = () => {
     { value: "alex", label: "Alex Smith" },
     { value: "emma", label: "Emma Wilson" },
     { value: "david", label: "David Brown" },
+    { value: "lisa", label: "Lisa Garcia" },
   ];
 
   const validateForm = () => {
@@ -65,6 +106,10 @@ const CreateTicket = () => {
 
     if (!formData.priority) {
       newErrors.priority = "Priority is required";
+    }
+
+    if (!formData.status) {
+      newErrors.status = "Status is required";
     }
 
     if (!formData.category) {
@@ -97,6 +142,7 @@ const CreateTicket = () => {
         alex: "Alex Smith",
         emma: "Emma Wilson",
         david: "David Brown",
+        lisa: "Lisa Garcia",
       };
 
       // Convert priority to proper case
@@ -104,6 +150,13 @@ const CreateTicket = () => {
         low: 'Low',
         medium: 'Medium',
         high: 'High',
+      };
+
+      // Convert status to proper case
+      const statusMap: Record<string, 'Open' | 'In Progress' | 'Resolved'> = {
+        open: 'Open',
+        inprogress: 'In Progress',
+        resolved: 'Resolved',
       };
 
       // Convert category to proper case
@@ -116,25 +169,26 @@ const CreateTicket = () => {
         performance: 'Performance',
       };
 
-      const newTicket = createTicket({
+      const updates: Partial<Ticket> = {
         title: formData.title,
         description: formData.description,
         priority: priorityMap[formData.priority] || 'Low',
+        status: statusMap[formData.status] || 'Open',
         category: categoryMap[formData.category] || formData.category,
-        assignee: formData.assignee ? assigneeMap[formData.assignee] : "Auto-assigned",
-      });
+        assignee: formData.assignee ? assigneeMap[formData.assignee] : ticket.assignee,
+      };
+
+      updateTicket(ticket.id, updates);
       
-      const timeDisplay = formatTimestamp(newTicket.created);
+      const timeDisplay = formatTimestamp(updates.updated || ticket.updated);
       toast({
-        title: "Ticket created successfully!",
-        description: `Your ticket ${newTicket.id} has been created and assigned at ${timeDisplay.absolute}.`,
+        title: "Ticket updated successfully!",
+        description: `Ticket ${ticket.id} has been updated at ${timeDisplay.absolute}.`,
       });
       
-      // Clear draft after successful submit
-      setFormData({ title: "", description: "", priority: "", category: "", assignee: "" });
       setIsSubmitting(false);
-      navigate("/tickets");
-    }, 2000);
+      navigate(`/tickets/${ticket.id}`);
+    }, 1000);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -157,16 +211,16 @@ const CreateTicket = () => {
           <Button 
             variant="outline" 
             size="icon"
-            onClick={() => navigate("/tickets")}
+            onClick={() => navigate(`/tickets/${ticket.id}`)}
             className="hover:scale-110 transition-transform"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Create New Ticket
+              Edit Ticket {ticket.id}
             </h1>
-            <p className="text-muted-foreground">Submit a new support request or bug report</p>
+            <p className="text-muted-foreground">Update ticket information and status</p>
           </div>
         </motion.div>
 
@@ -178,9 +232,9 @@ const CreateTicket = () => {
         >
           <Card className="gradient-card border-border/20 shadow-card">
             <CardHeader>
-              <CardTitle>Ticket Details</CardTitle>
+              <CardTitle>Edit Ticket Details</CardTitle>
               <CardDescription>
-                Please provide as much detail as possible to help us resolve your issue quickly.
+                Update the ticket information below. All fields marked with * are required.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -235,8 +289,8 @@ const CreateTicket = () => {
                   )}
                 </motion.div>
 
-                {/* Priority and Category Row */}
-                <div className="grid md:grid-cols-2 gap-4">
+                {/* Priority, Status, and Category Row */}
+                <div className="grid md:grid-cols-3 gap-4">
                   {/* Priority */}
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -270,11 +324,44 @@ const CreateTicket = () => {
                     )}
                   </motion.div>
 
-                  {/* Category */}
+                  {/* Status */}
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.5 }}
+                    className="space-y-2"
+                  >
+                    <Label>
+                      Status <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value) => handleInputChange("status", value)}
+                    >
+                      <SelectTrigger className={errors.status ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statuses.map((status) => (
+                          <SelectItem key={status.value} value={status.value}>
+                            {status.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.status && (
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.status}
+                      </div>
+                    )}
+                  </motion.div>
+
+                  {/* Category */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6 }}
                     className="space-y-2"
                   >
                     <Label>
@@ -308,16 +395,16 @@ const CreateTicket = () => {
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.6 }}
+                  transition={{ delay: 0.7 }}
                   className="space-y-2"
                 >
-                  <Label>Assign to (optional)</Label>
+                  <Label>Assign to</Label>
                   <Select
                     value={formData.assignee}
                     onValueChange={(value) => handleInputChange("assignee", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select assignee (leave empty for auto-assignment)" />
+                      <SelectValue placeholder="Select assignee" />
                     </SelectTrigger>
                     <SelectContent>
                       {assignees.map((assignee) => (
@@ -333,7 +420,7 @@ const CreateTicket = () => {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
+                  transition={{ delay: 0.8 }}
                   className="flex gap-4 pt-4"
                 >
                   <Button
@@ -342,12 +429,12 @@ const CreateTicket = () => {
                     className="gradient-button hover:scale-105 transition-transform duration-200 animate-pulse-glow"
                   >
                     <Save className="h-4 w-4 mr-2" />
-                    {isSubmitting ? "Creating Ticket..." : "Create Ticket"}
+                    {isSubmitting ? "Updating Ticket..." : "Update Ticket"}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => { setFormData({ title: "", description: "", priority: "", category: "", assignee: "" }); navigate("/tickets"); }}
+                    onClick={() => navigate(`/tickets/${ticket.id}`)}
                     disabled={isSubmitting}
                   >
                     Cancel
@@ -362,4 +449,4 @@ const CreateTicket = () => {
   );
 };
 
-export default CreateTicket;
+export default EditTicket;
