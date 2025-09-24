@@ -124,9 +124,17 @@ export function useTickets() {
   const [tickets, setTickets] = useLocalStorage<Ticket[]>('ticketApp_tickets', initialTickets);
 
   const createTicket = (ticketData: Omit<Ticket, 'id' | 'created' | 'updated' | 'status'>) => {
+    // Generate unique ID by finding the highest existing ID and incrementing
+    const existingIds = tickets.map(ticket => {
+      const idNumber = parseInt(ticket.id.replace('TK-', ''));
+      return isNaN(idNumber) ? 0 : idNumber;
+    });
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    const newId = `TK-${String(maxId + 1).padStart(3, '0')}`;
+
     const newTicket: Ticket = {
       ...ticketData,
-      id: `TK-${String(tickets.length + 1).padStart(3, '0')}`,
+      id: newId,
       status: 'Open',
       created: 'Just now',
       updated: 'Just now',
@@ -197,6 +205,31 @@ export function useTickets() {
       .slice(0, limit);
   };
 
+  // Function to sync tickets with localStorage (useful for debugging)
+  const syncWithLocalStorage = () => {
+    try {
+      const stored = window.localStorage.getItem('ticketApp_tickets');
+      if (stored) {
+        const parsedTickets = JSON.parse(stored);
+        setTickets(parsedTickets);
+        return parsedTickets;
+      }
+    } catch (error) {
+      console.error('Error syncing with localStorage:', error);
+    }
+    return tickets;
+  };
+
+  // Function to clear all tickets from localStorage
+  const clearAllTickets = () => {
+    setTickets([]);
+  };
+
+  // Function to reset to initial tickets
+  const resetToInitialTickets = () => {
+    setTickets(initialTickets);
+  };
+
   return {
     tickets,
     createTicket,
@@ -206,5 +239,8 @@ export function useTickets() {
     getTicketById,
     getStats,
     getRecentTickets,
+    syncWithLocalStorage,
+    clearAllTickets,
+    resetToInitialTickets,
   };
 }
