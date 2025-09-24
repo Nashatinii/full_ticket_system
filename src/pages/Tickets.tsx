@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Plus, Clock, CheckCircle, AlertCircle, User, Ticket, Trash, ArrowUpDown } from "lucide-react";
+import { Search, Filter, Plus, Clock, CheckCircle, AlertCircle, User, Ticket, Trash, ArrowUpDown, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { useTickets } from "@/hooks/useTickets";
@@ -61,18 +61,33 @@ const Tickets = () => {
 
   // Function to get priority weight for sorting
   const getPriorityWeight = (priority: string): number => {
-    switch (priority) {
-      case "High": return 3;
-      case "Medium": return 2;
-      case "Low": return 1;
+    const normalizedPriority = priority.toLowerCase();
+    switch (normalizedPriority) {
+      case "high": return 3;
+      case "medium": return 2;
+      case "low": return 1;
       default: return 0;
     }
   };
 
   const filteredTickets = tickets.filter((ticket) => {
-    const matchesSearch = ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.description.toLowerCase().includes(searchTerm.toLowerCase());
+    // Enhanced search logic
+    const searchLower = searchTerm.toLowerCase().trim();
+    const matchesSearch = searchLower === "" || 
+                         ticket.title.toLowerCase().includes(searchLower) ||
+                         ticket.description.toLowerCase().includes(searchLower) ||
+                         ticket.id.toLowerCase().includes(searchLower) ||
+                         ticket.assignee.toLowerCase().includes(searchLower) ||
+                         ticket.category.toLowerCase().includes(searchLower) ||
+                         (ticket.tags && ticket.tags.some(tag => tag.toLowerCase().includes(searchLower)));
+    
     const matchesTab = activeTab === "all" || ticket.status.toLowerCase().replace(" ", "") === activeTab;
+    
+    // Debug logging (only for troubleshooting)
+    if (searchTerm && searchTerm.trim() !== "" && process.env.NODE_ENV === 'development') {
+      console.log(`Search: "${searchTerm}" | Ticket: ${ticket.id} | Matches: ${matchesSearch}`);
+    }
+    
     return matchesSearch && matchesTab;
   });
 
@@ -97,11 +112,20 @@ const Tickets = () => {
   });
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "High": return "bg-destructive/20 text-destructive";
-      case "Medium": return "bg-warning/20 text-warning";
-      case "Low": return "bg-success/20 text-success";
-      default: return "bg-muted/20 text-muted-foreground";
+    const normalizedPriority = priority.toLowerCase();
+    
+    // Debug logging for priority colors
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Priority: "${priority}" -> Normalized: "${normalizedPriority}"`);
+    }
+    
+    switch (normalizedPriority) {
+      case "high": return "bg-destructive/20 text-destructive";
+      case "medium": return "bg-warning/20 text-warning";
+      case "low": return "bg-success/20 text-success";
+      default: 
+        console.warn(`Unknown priority: "${priority}"`);
+        return "bg-muted/20 text-muted-foreground";
     }
   };
 
@@ -157,11 +181,21 @@ const Tickets = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search tickets..."
+              placeholder="Search tickets by title, description, ID, assignee, category, or tags..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-10"
             />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1 h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => setSearchTerm("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           <div className="flex gap-2">
             <Select value={sortBy} onValueChange={setSortBy}>
@@ -183,6 +217,26 @@ const Tickets = () => {
             </Button>
           </div>
         </motion.div>
+
+        {/* Search Results Info */}
+        {searchTerm && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mb-4"
+          >
+            <p className="text-sm text-muted-foreground">
+              {sortedTickets.length === 0 ? (
+                <>No tickets found for "<span className="font-medium text-foreground">{searchTerm}</span>"</>
+              ) : (
+                <>
+                  {sortedTickets.length} ticket{sortedTickets.length !== 1 ? 's' : ''} found for "<span className="font-medium text-foreground">{searchTerm}</span>"
+                </>
+              )}
+            </p>
+          </motion.div>
+        )}
 
         {/* Tabs */}
         <motion.div

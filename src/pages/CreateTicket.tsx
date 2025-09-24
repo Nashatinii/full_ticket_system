@@ -98,11 +98,28 @@ const CreateTicket = () => {
         david: "David Brown",
       };
 
+      // Convert priority to proper case
+      const priorityMap: Record<string, 'Low' | 'Medium' | 'High'> = {
+        low: 'Low',
+        medium: 'Medium',
+        high: 'High',
+      };
+
+      // Convert category to proper case
+      const categoryMap: Record<string, string> = {
+        bug: 'Bug',
+        feature: 'Feature',
+        improvement: 'Improvement',
+        task: 'Task',
+        question: 'Question',
+        performance: 'Performance',
+      };
+
       const newTicket = createTicket({
         title: formData.title,
         description: formData.description,
-        priority: formData.priority as 'Low' | 'Medium' | 'High',
-        category: formData.category,
+        priority: priorityMap[formData.priority] || 'Low',
+        category: categoryMap[formData.category] || formData.category,
         assignee: formData.assignee ? assigneeMap[formData.assignee] : "Auto-assigned",
       });
       
